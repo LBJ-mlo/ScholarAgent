@@ -1,4 +1,4 @@
-# 🤖 ScholarAgent - 智能科研论文分析助手
+# 🤖 ScholarGPT--智能科研论文分析助手
 
 <div align="center">
 
