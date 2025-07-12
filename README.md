@@ -173,7 +173,7 @@ print(result["answer"])
 ```
 
 ---
-
+<img width="2401" height="1321" alt="image" src="https://github.com/user-attachments/assets/eb732181-cb3e-46ec-b015-fe60f3a069d4" />
 ## 🎯 应用场景
 
 ### 👨‍🎓 学生群体
