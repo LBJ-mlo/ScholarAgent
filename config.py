@@ -1,103 +1,110 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-ScholarAgent 配置管理模块
-
-该模块负责管理应用的配置信息，包括API密钥、模型参数等。
-支持从环境变量和配置文件读取配置。
+配置文件
 """
 
-import os
-import logging
-from typing import Optional
-from dotenv import load_dotenv
+# DeepSeek API配置
+DEEPSEEK_API_KEY = "sk-d005b01ce325422eb59daa1cd5355144"
+DEEPSEEK_API_BASE = "https://api.deepseek.com/v1"
+DEEPSEEK_MODEL = "deepseek-chat"
 
-# 加载环境变量
-load_dotenv()
+# 幻觉检测配置
+DETECTION_THRESHOLDS = {
+    'high_confidence': 0.8,
+    'medium_confidence': 0.6,
+    'low_confidence': 0.4
+}
 
-logger = logging.getLogger(__name__)
+# 检测维度权重
+DETECTION_WEIGHTS = {
+    'accuracy': 0.35,
+    'consistency': 0.35,
+    'reasoning': 0.25,
+    'completeness': 0.05
+}
 
-class Config:
-    """配置管理类"""
-    
-    def __init__(self):
-        """初始化配置"""
-        self._load_config()
-    
-    def _load_config(self):
-        """加载配置"""
-        # DeepSeek API配置
-        self.deepseek_api_key = self._get_env_var("DEEPSEEK_API_KEY")
-        self.deepseek_base_url = self._get_env_var("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-        self.deepseek_model = self._get_env_var("DEEPSEEK_MODEL", "deepseek-chat")
-        
-        # OpenAI API配置（可选）
-        self.openai_api_key = self._get_env_var("OPENAI_API_KEY")
-        self.openai_base_url = self._get_env_var("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        self.openai_model = self._get_env_var("OPENAI_MODEL", "gpt-4")
-        
-        # 应用配置
-        self.temperature = float(self._get_env_var("TEMPERATURE", "0.3") or "0.3")
-        self.max_iterations = int(self._get_env_var("MAX_ITERATIONS", "10") or "10")
-        verbose_str = self._get_env_var("VERBOSE", "true") or "true"
-        self.verbose = verbose_str.lower() == "true"
-        
-        # 验证必要的配置
-        self._validate_config()
-    
-    def _get_env_var(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        """获取环境变量"""
-        value = os.getenv(key, default)
-        if key.endswith("_API_KEY") and not value:
-            logger.warning(f"未设置 {key}，请检查环境变量配置")
-        return value
-    
-    def _validate_config(self):
-        """验证配置"""
-        if not self.deepseek_api_key:
-            logger.error("未设置 DEEPSEEK_API_KEY，请检查环境变量配置")
-            raise ValueError("DEEPSEEK_API_KEY 是必需的配置项")
-    
-    def get_llm_config(self, provider: str = "deepseek") -> dict:
-        """
-        获取LLM配置
-        
-        Args:
-            provider: 提供商 ("deepseek" 或 "openai")
-            
-        Returns:
-            dict: LLM配置字典
-        """
-        if provider.lower() == "deepseek":
-            return {
-                "model": self.deepseek_model,
-                "base_url": self.deepseek_base_url,
-                "api_key": self.deepseek_api_key,
-                "temperature": self.temperature
-            }
-        elif provider.lower() == "openai":
-            if not self.openai_api_key:
-                raise ValueError("未设置 OPENAI_API_KEY")
-            return {
-                "model": self.openai_model,
-                "base_url": self.openai_base_url,
-                "api_key": self.openai_api_key,
-                "temperature": self.temperature
-            }
-        else:
-            raise ValueError(f"不支持的提供商: {provider}")
-    
-    def get_agent_config(self) -> dict:
-        """
-        获取Agent配置
-        
-        Returns:
-            dict: Agent配置字典
-        """
-        return {
-            "max_iterations": self.max_iterations,
-            "verbose": self.verbose,
-            "temperature": self.temperature
-        }
+# 提示词模板
+PROMPT_TEMPLATES = {
+    'entity_extraction': """
+请从以下文本中提取关键实体，包括系统、服务、工具、时间、问题等：
 
-# 全局配置实例
-config = Config() 
+文本：{text}
+
+请以JSON格式输出：
+{{
+    "systems": ["系统1", "系统2"],
+    "services": ["服务1", "服务2"],
+    "tools": ["工具1", "工具2"],
+    "time_periods": ["时间段1", "时间段2"],
+    "problems": ["问题1", "问题2"],
+    "actions": ["动作1", "动作2"]
+}}
+""",
+    
+    'knowledge_generation': """
+基于以下原始案例描述和实体组合，生成详细的知识描述：
+
+原始案例：{original_text}
+
+实体组合：{entity_combination}
+
+请生成描述这些实体之间关系的知识，要求：
+1. 基于原始案例的合理推理
+2. 描述准确且符合技术逻辑
+3. 允许合理的因果推断
+4. 避免添加原始案例中不存在的信息
+""",
+    
+    'factual_consistency': """
+请检查以下生成的知识是否与原始案例描述一致：
+
+原始案例：{original_text}
+
+生成知识：{generated_knowledge}
+
+请分析：
+1. 生成知识中的事实是否与原始案例一致？
+2. 是否存在与原始案例冲突的信息？
+3. 推理是否基于原始案例的合理推断？
+
+请给出0-1的评分和详细分析。
+""",
+    
+    'reasoning_quality': """
+请评估以下推理的合理性：
+
+原始案例：{original_text}
+
+生成知识：{generated_knowledge}
+
+请分析：
+1. 推理是否有原始信息支持？
+2. 因果链是否逻辑合理？
+3. 是否符合技术领域的常识？
+4. 是否存在过度推断？
+
+请给出0-1的评分和详细分析。
+""",
+    
+    'information_support': """
+请评估以下生成知识的信息支持度：
+
+原始案例：{original_text}
+
+生成知识：{generated_knowledge}
+
+请分析：
+1. 生成知识中的每个断言是否有原始信息支持？
+2. 推理距离是否合理？
+3. 是否存在缺乏支持的信息？
+
+请给出0-1的评分和详细分析。
+"""
+}
+
+# 输出配置
+OUTPUT_CONFIG = {
+    'save_results': True,
+    'output_format': 'json',
+    'log_level': 'INFO'
+}
